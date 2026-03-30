@@ -38,21 +38,20 @@ def cache_jsonl(
     for file_path in files:
         file_name = Path(file_path).stem
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
         arrows = []
-        for line in tqdm(lines, desc=f"Processing {file_name}", leave=False):
-            arrow = processor.process(json.loads(line))
-            if arrow is not None:
-                arrows.append(arrow)
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in tqdm(f, desc=f"Processing {file_name}", leave=False):
+                arrow = processor.process(json.loads(line))
+                if arrow is not None:
+                    arrows.append(arrow)
 
         package = {key: [a[key] for a in arrows] for key in processor.output_keys}
 
         output = {}
         for key in processor.output_keys:
             if pack_size > 0:
-                output[key] = SequencePacker(pack_size, pad_value).pack(package[key])
+                packer = SequencePacker(pack_size, pad_value)  # 每个键独立实例
+                output[key] = packer.pack(package[key])
             else:
                 output[key] = package[key]
 

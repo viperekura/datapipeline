@@ -61,8 +61,30 @@ class DPOProcessor(BaseProcessor):
         self.tokenizer = tokenizer
 
     def process(self, input_dict: dict) -> dict:
-        # TODO: 实现 DPO 处理逻辑
-        return None
+        query = input_dict["query"]
+        chosen_response = input_dict["chosen"]
+        rejected_response = input_dict["rejected"]
+
+        q = self.tokenizer.encode(
+            f"<|im_start|>user\n{query}<|im_end|>\n<|im_start|>assistant\n"
+        )
+
+        chosen = self.tokenizer.encode(f"{chosen_response}<|im_end|>\n<eos>")
+        chosen_tokens = torch.tensor(q + chosen, dtype=torch.int32)
+        chosen_mask = torch.zeros_like(chosen_tokens, dtype=torch.bool)
+        chosen_mask[len(q):] = True
+
+        rejected = self.tokenizer.encode(f"{rejected_response}<|im_end|>\n<eos>")
+        rejected_tokens = torch.tensor(q + rejected, dtype=torch.int32)
+        rejected_mask = torch.zeros_like(rejected_tokens, dtype=torch.bool)
+        rejected_mask[len(q):] = True
+
+        return {
+            "chosen": chosen_tokens,
+            "chosen_mask": chosen_mask,
+            "rejected": rejected_tokens,
+            "rejected_mask": rejected_mask,
+        }
 
     @property
     def output_keys(self) -> List[str]:

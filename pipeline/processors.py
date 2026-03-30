@@ -41,14 +41,18 @@ class SFTProcessor(BaseProcessor):
         self.tokenizer = tokenizer
 
     def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:
-        query, response = input_dict["query"], input_dict["response"]
+        query = input_dict["query"]
+        response = input_dict["response"]
+        
         q = self.tokenizer.encode(
             f"<|im_start|>user\n{query}<|im_end|>\n<|im_start|>assistant\n"
         )
         a = self.tokenizer.encode(f"{response}<|im_end|>\n<eos>")
+        
+        q_len = len(q)
         tokens = torch.tensor(q + a, dtype=torch.int32)
-        loss_mask = torch.zeros_like(tokens, dtype=torch.bool)
-        loss_mask[len(q):] = True
+        loss_mask = torch.zeros(q_len + len(a), dtype=torch.bool)
+        loss_mask[q_len:] = True
         return {"sequence": tokens, "loss_mask": loss_mask}
 
     @property
@@ -72,14 +76,19 @@ class DPOProcessor(BaseProcessor):
         )
 
         chosen = self.tokenizer.encode(f"{chosen_response}<|im_end|>\n<eos>")
+        q_len = len(q)
+        chosen_len = len(chosen)
+        
         chosen_tokens = torch.tensor(q + chosen, dtype=torch.int32)
-        chosen_mask = torch.zeros_like(chosen_tokens, dtype=torch.bool)
-        chosen_mask[len(q):] = True
+        chosen_mask = torch.zeros(q_len + chosen_len, dtype=torch.bool)
+        chosen_mask[q_len:] = True
 
         rejected = self.tokenizer.encode(f"{rejected_response}<|im_end|>\n<eos>")
+        rejected_len = len(rejected)
+        
         rejected_tokens = torch.tensor(q + rejected, dtype=torch.int32)
-        rejected_mask = torch.zeros_like(rejected_tokens, dtype=torch.bool)
-        rejected_mask[len(q):] = True
+        rejected_mask = torch.zeros(q_len + rejected_len, dtype=torch.bool)
+        rejected_mask[q_len:] = True
 
         return {
             "chosen": chosen_tokens,

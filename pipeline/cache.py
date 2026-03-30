@@ -2,7 +2,7 @@
 import json
 import os
 import logging
-from typing import List
+from typing import List, Dict
 from pathlib import Path
 
 from tqdm import tqdm
@@ -39,33 +39,40 @@ def cache_jsonl(
     """
     os.makedirs(output_dir, exist_ok=True)
     output_files: List[str] = []
+    # Cache output_keys to avoid repeated attribute access
+    output_keys = processor.output_keys
 
     for file_path in files:
         file_name = Path(file_path).stem
 
-        arrows = []
+        # Pre-allocate lists for each output key
+        arrows: Dict[str, List] = {key: [] for key in output_keys}
+        
+        # Read and process all lines
         with open(file_path, "r", encoding="utf-8") as f:
             for line_num, line in enumerate(tqdm(f, desc=f"Processing {file_name}", leave=False), start=1):
                 try:
-                    arrow = processor.process(json.loads(line))
+                    result = processor.process(json.loads(line))
+                    if result is not None:
+                        # Batch append: add each key's tensor to corresponding list
+                        for key in output_keys:
+                            arrows[key].append(result[key])
                 except json.JSONDecodeError as e:
                     logger.warning(f"JSON decode error in {file_path} line {line_num}: {e}. Skipping line.")
                     continue
                 except Exception as e:
                     logger.warning(f"Unexpected error processing line {line_num} in {file_path}: {e}. Skipping line.")
                     continue
-                if arrow is not None:
-                    arrows.append(arrow)
 
-        package = {key: [a[key] for a in arrows] for key in processor.output_keys}
-
-        output = {}
-        for key in processor.output_keys:
-            if pack_size > 0:
-                packer = SequencePacker(pack_size, pad_value)  # independent instance per key
-                output[key] = packer.pack(package[key])
-            else:
-                output[key] = package[key]
+        # Convert lists to tensors once per key
+        if pack_size > 0:
+            output = {}
+            for key in output_keys:
+                packer = SequencePacker(pack_size, pad_value)
+                output[key] = packer.pack(arrows[key])
+        else:
+            # No packing: directly use the arrow tensors
+            output = arrows
 
         IOHandler.save_h5(output_dir, file_name, output)
         h5_path = os.path.join(output_dir, f"{file_name}.h5")

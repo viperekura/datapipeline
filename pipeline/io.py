@@ -34,6 +34,7 @@ class IOHandler:
     def save_h5(output_dir: str, file_name: str, tensor_group: Dict[str, List[Tensor]]) -> None:
         os.makedirs(output_dir, exist_ok=True)
         full_path = os.path.join(output_dir, f"{file_name}.h5")
+        
         with h5py.File(full_path, 'w') as f:
             for key, tensors in tensor_group.items():
                 grp = f.create_group(key)

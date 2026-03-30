@@ -1,9 +1,9 @@
 import re
-from typing import Dict
+from typing import Dict, Optional
 
 
 class TextNormalizer:
-    """文本规范化"""
+    """Text normalization."""
 
     DEFAULT_REPLACEMENTS = {
         "\\[": "$$", "\\]": "$$", "\\(": "$", "\\)": "$",
@@ -13,7 +13,7 @@ class TextNormalizer:
         '\u00A0': ' ', '\u2026': '...'
     }
 
-    def __init__(self, custom_rules: Dict[str, str] = None):
+    def __init__(self, custom_rules: Optional[Dict[str, str]] = None):
         self.replacements = {**self.DEFAULT_REPLACEMENTS, **(custom_rules or {})}
         self._pattern = re.compile('|'.join(re.escape(k) for k in self.replacements))
 

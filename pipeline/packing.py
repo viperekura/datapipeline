@@ -3,12 +3,14 @@ from typing import List
 import torch
 from torch import Tensor
 
+from .utils import error_handler
+
 logger = logging.getLogger(__name__)
 
 
 class SequencePacker:
 
-    def __init__(self, pack_size: int, pad_value: int = 0, dtype=torch.int32):
+    def __init__(self, pack_size: int, pad_value: int = 0, dtype: torch.dtype = torch.int32):
         self.pack_size = pack_size
         self.pad_value = pad_value
         self.dtype = dtype
@@ -21,6 +23,7 @@ class SequencePacker:
         )
         self._current_pos = 0
 
+    @error_handler()
     def pack(self, sequences: List[Tensor]) -> List[Tensor]:
         """
         Pack sequences into fixed-size packages.

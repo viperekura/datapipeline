@@ -1,13 +1,15 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Callable
 import os
 import h5py
 import torch
 from torch import Tensor
 
+from .utils import error_handler
+
 
 class IOHandler:
-    """文件和 HDF5 读写"""
+    """File and HDF5 read/write operations."""
 
     @staticmethod
     def fetch_files(directory: str) -> List[str]:
@@ -18,7 +20,7 @@ class IOHandler:
         ]
 
     @staticmethod
-    def fetch_folders(root_dir: str, filter_func=None) -> List[str]:
+    def fetch_folders(root_dir: str, filter_func: Optional[Callable[[str], bool]] = None) -> List[str]:
         folders = []
         for root, dirs, _ in os.walk(root_dir):
             for dir_name in dirs:
@@ -28,6 +30,7 @@ class IOHandler:
         return folders
 
     @staticmethod
+    @error_handler()
     def save_h5(output_dir: str, file_name: str, tensor_group: Dict[str, List[Tensor]]) -> None:
         os.makedirs(output_dir, exist_ok=True)
         full_path = os.path.join(output_dir, f"{file_name}.h5")
@@ -38,6 +41,7 @@ class IOHandler:
                     grp.create_dataset(f'data_{idx}', data=tensor.cpu().numpy())
 
     @staticmethod
+    @error_handler()
     def load_h5(file_path: str, share_memory=True) -> Dict[str, List[Tensor]]:
         tensor_group: Dict[str, List[Tensor]] = {}
 

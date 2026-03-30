@@ -1,6 +1,7 @@
-"""将 JSONL 文件 tokenize 后打包存储为 HDF5"""
+"""Tokenize JSONL files and pack them into HDF5 storage."""
 import json
 import os
+import logging
 from typing import List
 from pathlib import Path
 
@@ -9,8 +10,12 @@ from tqdm import tqdm
 from .processors import BaseProcessor
 from .packing import SequencePacker
 from .io import IOHandler
+from .utils import error_handler
+
+logger = logging.getLogger(__name__)
 
 
+@error_handler()
 def cache_jsonl(
     files: List[str],
     output_dir: str,
@@ -20,17 +25,17 @@ def cache_jsonl(
     pad_value: int = 1,
 ) -> List[str]:
     """
-    将 JSONL 文件 tokenize 后打包存储为 HDF5。
+    Tokenize JSONL files and pack them into HDF5 storage.
 
     Args:
-        files: JSONL 文件路径列表
-        output_dir: H5 输出目录
-        processor: 已初始化的 Processor 实例
-        pack_size: 打包长度，<=0 表示不打包
-        pad_value: 填充值
+        files: List of JSONL file paths
+        output_dir: H5 output directory
+        processor: Initialized Processor instance
+        pack_size: Packing length, <=0 means no packing
+        pad_value: Padding value
 
     Returns:
-        生成的 H5 文件路径列表
+        List of generated H5 file paths
     """
     os.makedirs(output_dir, exist_ok=True)
     output_files: List[str] = []
@@ -40,8 +45,15 @@ def cache_jsonl(
 
         arrows = []
         with open(file_path, "r", encoding="utf-8") as f:
-            for line in tqdm(f, desc=f"Processing {file_name}", leave=False):
-                arrow = processor.process(json.loads(line))
+            for line_num, line in enumerate(tqdm(f, desc=f"Processing {file_name}", leave=False), start=1):
+                try:
+                    arrow = processor.process(json.loads(line))
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON decode error in {file_path} line {line_num}: {e}. Skipping line.")
+                    continue
+                except Exception as e:
+                    logger.warning(f"Unexpected error processing line {line_num} in {file_path}: {e}. Skipping line.")
+                    continue
                 if arrow is not None:
                     arrows.append(arrow)
 
@@ -50,7 +62,7 @@ def cache_jsonl(
         output = {}
         for key in processor.output_keys:
             if pack_size > 0:
-                packer = SequencePacker(pack_size, pad_value)  # 每个键独立实例
+                packer = SequencePacker(pack_size, pad_value)  # independent instance per key
                 output[key] = packer.pack(package[key])
             else:
                 output[key] = package[key]
@@ -58,6 +70,6 @@ def cache_jsonl(
         IOHandler.save_h5(output_dir, file_name, output)
         h5_path = os.path.join(output_dir, f"{file_name}.h5")
         output_files.append(h5_path)
-        print(f"Saved {h5_path}")
+        logger.info(f"Saved {h5_path}")
 
     return output_files

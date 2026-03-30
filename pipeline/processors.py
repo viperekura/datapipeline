@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Any
 import torch
+from torch import Tensor
+from .tokenizer import BpeTokenizer
 
 
 class BaseProcessor(ABC):
-    """处理器抽象基类"""
+    """Abstract base class for processors."""
 
     @abstractmethod
-    def process(self, input_dict: dict) -> dict:
+    def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:
         pass
 
     @property
@@ -17,12 +19,12 @@ class BaseProcessor(ABC):
 
 
 class PreTrainProcessor(BaseProcessor):
-    """预训练数据处理器"""
+    """Pre-training data processor."""
 
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer: BpeTokenizer):
         self.tokenizer = tokenizer
 
-    def process(self, input_dict: dict) -> dict:
+    def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:
         segment = input_dict["text"]
         tokens = self.tokenizer.encode(f"{segment}<eos>")
         return {'sequence': torch.tensor(tokens, dtype=torch.int32)}
@@ -33,12 +35,12 @@ class PreTrainProcessor(BaseProcessor):
 
 
 class SFTProcessor(BaseProcessor):
-    """监督微调数据处理器"""
+    """Supervised fine-tuning data processor."""
 
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer: BpeTokenizer):
         self.tokenizer = tokenizer
 
-    def process(self, input_dict: dict) -> dict:
+    def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:
         query, response = input_dict["query"], input_dict["response"]
         q = self.tokenizer.encode(
             f"<|im_start|>user\n{query}<|im_end|>\n<|im_start|>assistant\n"
@@ -55,12 +57,12 @@ class SFTProcessor(BaseProcessor):
 
 
 class DPOProcessor(BaseProcessor):
-    """DPO 偏好学习数据处理器"""
+    """DPO preference learning data processor."""
 
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer: BpeTokenizer):
         self.tokenizer = tokenizer
 
-    def process(self, input_dict: dict) -> dict:
+    def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:
         query = input_dict["query"]
         chosen_response = input_dict["chosen"]
         rejected_response = input_dict["rejected"]
@@ -92,7 +94,7 @@ class DPOProcessor(BaseProcessor):
 
 
 class ProcessorFactory:
-    """处理器工厂"""
+    """Processor factory."""
 
     _processors = {
         "pt": PreTrainProcessor,
@@ -101,7 +103,7 @@ class ProcessorFactory:
     }
 
     @classmethod
-    def create(cls, processor_type: str, tokenizer) -> BaseProcessor:
+    def create(cls, processor_type: str, tokenizer: BpeTokenizer) -> BaseProcessor:
         if processor_type not in cls._processors:
             raise ValueError(f"Invalid processor type: {processor_type}")
         return cls._processors[processor_type](tokenizer)

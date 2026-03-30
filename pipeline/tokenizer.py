@@ -2,11 +2,11 @@ from tokenizers import Tokenizer, Encoding
 from tokenizers import decoders, processors, normalizers, pre_tokenizers
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
-from typing import List, Union
+from typing import List, Union, Optional, Tuple, Iterator
 
 
 class BpeTokenizer:
-    def __init__(self, path=None):
+    def __init__(self, path: Optional[str] = None):
         self._control_tokens = ["<bos>", "<eos>", "<pad>"]
         self._special_tokens = ["<|im_start|>", "<|im_end|>"]
         
@@ -28,7 +28,7 @@ class BpeTokenizer:
         if path is not None:
             self._tokenizer = Tokenizer.from_file(path)
         
-    def _prepare_trainer(self, vocab_size: int, min_freq: int, reserved_token_size: int, max_token_length=18) -> tuple:
+    def _prepare_trainer(self, vocab_size: int, min_freq: int, reserved_token_size: int, max_token_length: int = 18) -> Tuple[BpeTrainer, int, List[str]]:
         assert reserved_token_size > len(self._special_tokens)
         reserved_tokens = [f"<|reserve{i:02d}|>" for i in range(reserved_token_size - len(self._special_tokens))]
         detail_vocab_size = vocab_size - (len(reserved_tokens) + len(self._special_tokens))
@@ -49,7 +49,7 @@ class BpeTokenizer:
         
         return trainer, detail_vocab_size, reserved_tokens
 
-    def train(self, files, vocab_size, min_freq, reserved_token_size=100):
+    def train(self, files: List[str], vocab_size: int, min_freq: int, reserved_token_size: int = 100) -> None:
         trainer, _, reserved_tokens = self._prepare_trainer(
             vocab_size=vocab_size,
             min_freq=min_freq,
@@ -58,7 +58,7 @@ class BpeTokenizer:
         self._tokenizer.train(files=files, trainer=trainer)
         self._tokenizer.add_special_tokens(self._special_tokens + reserved_tokens)
             
-    def train_from_iterator(self, iterator, vocab_size, min_freq, reserved_token_size=100):
+    def train_from_iterator(self, iterator: Iterator[str], vocab_size: int, min_freq: int, reserved_token_size: int = 100) -> None:
         trainer, _, reserved_tokens = self._prepare_trainer(
             vocab_size=vocab_size,
             min_freq=min_freq,
@@ -67,13 +67,13 @@ class BpeTokenizer:
         self._tokenizer.train_from_iterator(iterator=iterator, trainer=trainer)
         self._tokenizer.add_special_tokens(self._special_tokens + reserved_tokens)
             
-    def save(self, path):
+    def save(self, path: str) -> None:
         self._tokenizer.save(path)
         
-    def load(self, path):
+    def load(self, path: str) -> None:
         self._tokenizer = Tokenizer.from_file(path)
 
-    def encode(self, tokens: Union[str, List[str]], out_ids: bool=True, add_special_tokens: bool=False) -> List:
+    def encode(self, tokens: Union[str, List[str]], out_ids: bool = True, add_special_tokens: bool = False) -> Union[List[int], List[str], List[List[int]], List[List[str]]]:
         if isinstance(tokens, str):
             encoded: Encoding = self._tokenizer.encode(tokens, add_special_tokens=add_special_tokens)
             return encoded.ids if out_ids else encoded.tokens

@@ -9,64 +9,55 @@ logger = logging.getLogger(__name__)
 
 class SequencePacker:
     """
-    Packs variable-length sequences into fixed-size tensors, suitable for
-    concatenating unequal-length training samples into uniform shapes
-    for DataLoader / model training.
+    Stream-concatenation packer for LLM training sequences.
 
-    Algorithm (Sorted Greedy Fill, based on First-Fit Decreasing heuristic):
+    Algorithm (streaming concat):
 
-        Input:  sequences = [A(len=5), B(len=2), C(len=3)], pack_size = 8
+        Input:  sequences = [A(len=3), B(len=5), C(len=2)], pack_size = 6
 
         1. Validate & Normalize
-           - Check 1D dimension, unify dtype, truncate overlong sequences with warning
-           - Result: [(A,5), (B,2), (C,3)]
+           - Check 1D dimension, unify dtype, warn on overlong sequences
+           - Result: [A, B, C]
 
-        2. Sort by length descending (FFD)
-           - Result: [(A,5), (C,3), (B,2)]
+        2. Stream into buffer, slice off full chunks
+           - buffer += A(3) -> [a1 a2 a3], pos=3
+           - buffer += B(5) -> [a1 a2 a3 b1 b2 b3 b4 b5], pos=8
+             pos >= 6 -> flush [a1 a2 a3 b1 b2 b3], buffer=[b4 b5], pos=2
+           - buffer += C(2) -> [b4 b5 c1 c2], pos=4
+             loop ends -> flush tail [b4 b5 c1 c2 PAD PAD]
 
-        3. Greedy fill: write into a pre-allocated buffer sequentially, flush when full
-           - Write A(5) -> buffer = [A A A A A _ _ _], pos=5
-           - Write C(3) -> pos+3=8 <= 8 -> buffer = [A A A A A C C C], pos=8
-           - Buffer full  -> flush as package[0], reset buffer & pos=0
-           - Write B(2) -> buffer = [B B _ _ _ _ _ _], pos=2
-           - Loop ends   -> flush tail -> package[1] = [B B 0 0 0 0 0 0]
+        Output: [[a1 a2 a3 b1 b2 b3], [b4 b5 c1 c2 PAD PAD]]
 
-        Output: [package[0], package[1]]
+    Samples may be split across chunks — this is intentional and standard
+    practice in LLM training (TRL, Megatron-LM, etc.).
 
     Cross-group consistency:
-        When packing different key groups (e.g. sequences and loss_masks)
-        with separate pack() calls, tensors at the same index always have
-        identical lengths, so the descending sort produces the exact same
-        ordering. Element-level correspondence across groups is preserved.
-
-    Performance:
-        - Pre-allocated buffer reused via fill_() to avoid repeated tensor creation
-        - Attributes cached as local variables inside the loop to reduce lookup overhead
+        Different tensor groups (e.g. input_ids, loss_masks) packed with
+        separate packer instances on samples with matching lengths produce
+        identical chunk boundaries. Element-level correspondence is preserved.
     """
 
-    def __init__(self, pack_size: int, pad_value: int = 0, dtype: torch.dtype = None):
+    def __init__(self, pack_size: int, pad_value: int = 0, dtype: torch.dtype = torch.int32):
         self.pack_size = pack_size
         self.pad_value = pad_value
-        self.dtype = dtype  # None = follow input dtype
-        self._buffer: Tensor | None = None
-        self._pos = 0
+        self.dtype = dtype
+        self._buffer: List[int] = []
+        self._pos: int = 0
         self._packages: List[Tensor] = []
 
     def reset(self) -> None:
-        """Reset packer state for instance reuse, unlocking dtype."""
-        self.dtype = None
-        self._buffer = None
+        """Reset packer state for instance reuse."""
+        self._buffer = []
         self._pos = 0
         self._packages = []
 
     @error_handler()
     def pack(self, sequences: List[Tensor]) -> List[Tensor]:
         """
-        Pack sequences into fixed-size packages using First-Fit Decreasing.
+        Pack sequences via streaming concatenation into fixed-size chunks.
 
-        Sequences are sorted by length descending to minimize wasted padding.
-        All tensor groups (e.g. sequences, loss_masks) with matching per-item
-        lengths produce identical ordering, so cross-group correspondence is preserved.
+        Sequences are concatenated in order and sliced at pack_size boundaries.
+        The final chunk is padded with pad_value.
 
         Args:
             sequences: List of 1D input tensors.
@@ -77,54 +68,33 @@ class SequencePacker:
         if not sequences:
             return []
 
-        # --- validate & normalize in a single pass ---
-        normalized: list[tuple[Tensor, int]] = []
-        target_dtype = self.dtype if self.dtype is not None else sequences[0].dtype
+        # --- validate & normalize ---
+        normalized: List[Tensor] = []
         for i, seq in enumerate(sequences):
             if seq.dim() != 1:
                 raise ValueError(
                     f"Expected 1D tensor at index {i}, got {seq.dim()}D tensor with shape {seq.shape}"
                 )
-            if seq.dtype != target_dtype:
-                seq = seq.to(target_dtype)
-            length = seq.numel()
-            if length > self.pack_size:
-                seq = seq[: self.pack_size]
-                length = self.pack_size
-            normalized.append((seq, length))
+            if seq.dtype != self.dtype:
+                seq = seq.to(self.dtype)
+            normalized.append(seq)
 
-        # --- reset internal state ---
-        buf = self._buffer
-        if buf is None or buf.dtype != target_dtype:
-            buf = torch.full((self.pack_size,), self.pad_value, dtype=target_dtype)
-            self._buffer = buf
-        buf.fill_(self.pad_value)
-        self._pos = 0
+        # --- stream into buffer, slice off full chunks ---
+        self._buffer = []
         self._packages = []
-
-        # --- sort by length descending (FFD heuristic) ---
-        normalized.sort(key=lambda x: x[1], reverse=True)
-
-        # --- greedy fill ---
-        buf = self._buffer
-        pos = self._pos
-        packages = self._packages
         pack_size = self.pack_size
-        pad_value = self.pad_value
+        buf = self._buffer
 
-        for tensor, length in normalized:
-            if pos + length > pack_size:
-                # flush current package
-                packages.append(buf.clone())
-                buf.fill_(pad_value)
-                pos = 0
-            buf[pos : pos + length] = tensor
-            pos += length
+        for seq in normalized:
+            buf.extend(seq.tolist())
+            while len(buf) >= pack_size:
+                self._packages.append(torch.tensor(buf[:pack_size], dtype=self.dtype))
+                buf = buf[pack_size:]
 
-        # flush the last (possibly partial) package
-        if pos > 0:
-            packages.append(buf.clone())
+        # flush tail with padding
+        if buf:
+            padded = buf + [self.pad_value] * (pack_size - len(buf))
+            self._packages.append(torch.tensor(padded, dtype=self.dtype))
 
-        # write back state
-        self._pos = pos
+        self._pos = len(buf)
         return self._packages

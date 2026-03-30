@@ -4,7 +4,7 @@ from pipeline import export_dataset
 
 def process_func(input_dict: dict):
     return {
-        "prompt": input_dict["prompt"],
+        "query": input_dict["prompt"],
         "chosen": input_dict["chosen"],
         "rejected": input_dict["rejected"],
     }

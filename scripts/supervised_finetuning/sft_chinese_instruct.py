@@ -17,12 +17,12 @@ if __name__ == "__main__":
         'psycho-10k-dpsk-r1', 'sof-c-zh', 'industryinstruction', 'Chinese-QA-AFAF',
     ]
 
-    datasets = []
+    dataset_list = []
     for subset in all_data:
         ds = load_dataset("Mxode/Chinese-Instruct", name=subset)
-        datasets.append(ds["train"])
+        dataset_list.append(ds["train"])
 
-    combined_dataset = concatenate_datasets(datasets)
+    combined_dataset = concatenate_datasets(dataset_list)
     export_dataset(
         dataset=combined_dataset,
         output_dir="./dataset",

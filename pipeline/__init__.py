@@ -1,17 +1,17 @@
 import logging
-from .tokenizer import BpeTokenizer
-from .text import TextNormalizer
-from .packing import SequencePacker
-from .io import IOHandler
-from .processors import ProcessorFactory, BaseProcessor
-from .export import export_dataset
-from .cache import cache_jsonl
-from .utils import setup_logging
+from pipeline.tokenizer import BpeTokenizer
+from pipeline.text import TextNormalizer
+from pipeline.packing import SequencePacker
+from pipeline.io import IOHandler, export_dataset, cache_jsonl
+from pipeline.processors import ProcessorFactory, BaseProcessor
+from pipeline.utils import setup_logging
+from pipeline.strategies import PromptStrategy, ChatMLStrategy, AlpacaStrategy, StrategyFactory
 
-# 配置项目级日志记录
+# Configure project-level logging
 setup_logging()
 
 __all__ = [
+    # Core modules
     'BpeTokenizer',
     'TextNormalizer',
     'SequencePacker',
@@ -20,4 +20,9 @@ __all__ = [
     'BaseProcessor',
     'export_dataset',
     'cache_jsonl',
+    # Strategy pattern
+    'PromptStrategy',
+    'ChatMLStrategy',
+    'AlpacaStrategy',
+    'StrategyFactory',
 ]

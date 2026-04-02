@@ -20,11 +20,11 @@
 │  prefix_chunk_1.jsonl    │    │       │                          │
 │  ...                     │    │       ▼                          │
 │                          │    │  chunk_0.h5                      │
-│  module: export.py       │    │  chunk_1.h5                      │
+│  module: io.py           │    │  chunk_1.h5                      │
 │                          │    │                                  │
-│                          │    │  modules: cache.py,              │
-│                          │    │   processors.py, packing.py,     │
-│                          │    │   io.py, tokenizer.py            │
+│                          │    │  modules: io.py,                 │
+│                          │    │   processors/, packing.py,       │
+│                          │    │   tokenizer.py                   │
 └──────────────────────────┘    └──────────────────────────────────┘
 ```
 
@@ -38,7 +38,7 @@
 3. `process_func` 返回单个 dict 或 list[dict]（支持一对多展开）
 4. 每片写为一个 JSONL 文件
 
-**模块**: `pipeline/export.py`
+**模块**: `pipeline/io.py` (export_dataset 函数)
 
 ### 阶段 2: cache_jsonl()
 
@@ -50,7 +50,7 @@
 3. 可选通过 `SequencePacker` 打包为固定长度
 4. 通过 `IOHandler.save_h5()` 写入 HDF5
 
-**模块**: `pipeline/io.py`（编排）+ `pipeline/processors.py`（转换）+ `pipeline/packing.py`（打包）+ `pipeline/tokenizer.py`（分词）
+**模块**: `pipeline/io.py`（编排）+ `pipeline/processors/`（转换）+ `pipeline/packing.py`（打包）+ `pipeline/tokenizer.py`（分词）
 
 ## 处理器设计
 
@@ -60,10 +60,10 @@
 
 | 方法 | 说明 |
 |------|------|
-| `create(type, tokenizer)` | 创建处理器，SFT/DPO 使用默认 ChatML 策略 |
-| `create_with_strategy(type, tokenizer, strategy)` | 创建带自定义策略的处理器 |
-| `create_with_strategy_name(type, tokenizer, name, **kwargs)` | 通过名称创建策略，`**kwargs` 透传用于自定义 token |
-| `register(type, processor_class)` | 注册自定义处理器 |
+| `create(processor_type, tokenizer)` | 创建处理器，SFT/DPO 使用默认 ChatML 策略 |
+| `create_with_strategy(processor_type, tokenizer, strategy)` | 创建带自定义策略的处理器 |
+| `create_with_strategy_name(processor_type, tokenizer, strategy_name, **kwargs)` | 通过名称创建策略，`**kwargs` 透传用于自定义 token |
+| `register(processor_type)` | 注册自定义处理器（装饰器方式） |
 
 ### 处理器类型
 
@@ -78,10 +78,10 @@ Output: {"sequence": Tensor[int32]}
 ```
 Input:  {"query": "...", "response": "..."}
 Action:
-  1. strategy.build_prompt(input_dict) -> query prompt with special tokens
-  2. concat: prompt + response + response_suffix
-  3. tokenizer.encode -> token ids
-  4. build loss_mask: query=False, response=True
+  1. tokenizer.encode(query) + tokenizer.encode(response)
+  2. strategy.assemble_prompt(query_tokens) -> prompt with format tokens
+  3. strategy.assemble_response(response_tokens) -> response with suffix
+  4. concat prompt + response, build loss_mask: query=False, response=True
 Output: {"sequence": Tensor[int32], "loss_mask": Tensor[bool]}
 ```
 
@@ -89,10 +89,11 @@ Output: {"sequence": Tensor[int32], "loss_mask": Tensor[bool]}
 ```
 Input:  {"query": "...", "chosen": "...", "rejected": "..."}
 Action:
-  1. strategy.build_prompt(input_dict) -> shared query prompt
-  2. encode chosen  = query + response_start + chosen  + suffix
-  3. encode rejected = query + response_start + rejected + suffix
-  4. build masks: query=False, response=True
+  1. tokenizer.encode(query/chosen/rejected)
+  2. strategy.assemble_prompt(query_tokens) -> shared prompt
+  3. strategy.assemble_response(chosen_tokens) -> chosen with suffix
+  4. strategy.assemble_response(rejected_tokens) -> rejected with suffix
+  5. build masks: prompt=False, response=True
 Output: {"chosen": Tensor, "chosen_mask": Tensor[bool],
          "rejected": Tensor, "rejected_mask": Tensor[bool]}
 ```
@@ -101,14 +102,12 @@ Output: {"chosen": Tensor, "chosen_mask": Tensor[bool],
 
 ### PromptStrategy
 
-抽象 prompt/response 格式，所有特殊 token 可通过构造函数自定义配置。
+抽象 prompt/response 格式策略，将已分词的 token 列表与格式 token 组装。所有参数可通过构造函数自定义配置。
 
 **接口**:
-- `build_prompt(input_dict)` — 构建包含 query 的完整 prompt
-- `build_response_prefix()` — response 前缀（当前均返回空串）
-- `build_response_suffix()` — response 后缀（含 `<｜end▁of▁sentence｜>`）
-- `response_start_token` — response 起始 token（用于 DPO 的 loss mask 定位）
-- `eos_tokens` — 结束 token
+- `name` — 策略名称属性
+- `assemble_prompt(query_tokens: List[int])` — 将 query tokens 组装为完整 prompt，包含格式 token 到 response 开始标记
+- `assemble_response(response_tokens: List[int])` — 将 response tokens 包装格式 token（后缀、EOS 等）
 
 **内置实现**:
 
@@ -116,26 +115,26 @@ ChatML:
 
 | Parameter       | Default Token                              |
 |-----------------|--------------------------------------------|
-| user_start      | `<\|im_start\|>user\n`                    |
-| user_end        | `<\|im_end\|>\n`                          |
-| assistant_start | `<\|im_start\|>assistant\n`               |
-| assistant_end   | `<\|im_end\|>\n<｜end▁of▁sentence｜>`                     |
+| user_start      | `<｜im_start｜>user\n`                     |
+| user_end        | `<｜im_end｜>\n`                           |
+| assistant_start | `<｜im_start｜>assistant\n`                |
+| assistant_end   | `<｜im▁end｜>\n`                          |
 
 Alpaca:
 
-| Parameter        | Default Token          |
-|------------------|------------------------|
-| instruction_start | `### Instruction:\n`  |
-| response_start    | `### Response:\n`     |
-| response_suffix   | `\n<｜end▁of▁sentence｜>`             |
+| Parameter        | Default Token             |
+|------------------|---------------------------|
+| instruction_start | `### Instruction:\n`     |
+| response_start    | `### Response:\n`        |
+| response_suffix   | `<｜end▁of▁sentence｜>` |
 
 **自定义示例**:
 ```python
-strategy = StrategyFactory.create("chatml",
+strategy = StrategyFactory.create("chatml", tokenizer,
     user_start="<s>user\n",
     user_end="</s>\n",
     assistant_start="<s>assistant\n",
-    assistant_end="</s>\n<｜end▁of▁sentence｜>",
+    assistant_end="</s>\n",
 )
 ```
 
@@ -155,12 +154,13 @@ StrategyFactory.register("my_format", MyStrategy)
 
 ## 序列打包
 
-`SequencePacker` 将变长序列打包为固定长度的 tensor，使用 First-Fit Decreasing 算法：
+`SequencePacker` 将变长序列打包为固定长度的 tensor，使用流式拼接算法（Streaming Concat）：
 
-1. 按序列长度降序排列
-2. 逐个放入当前包，超长则截断并警告
-3. 当前包放不下时保存并开新包
-4. 不足部分用 `pad_value` 填充
+1. 验证并归一化所有序列（检查维度、统一 dtype）
+2. 逐个将序列追加到缓冲区，当缓冲区长度 >= pack_size 时，截取完整块并保存
+3. 循环结束后，将尾部不足 pack_size 的部分用 `pad_value` 填充
+
+序列可能跨块拆分（这是 LLM 训练的常见做法，如 TRL、Megatron-LM）。
 
 打包在 `cache_jsonl()` 中按 `pack_size` 启用（`> 0` 时生效，`<= 0` 跳过打包）。
 

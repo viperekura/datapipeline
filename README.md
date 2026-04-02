@@ -154,8 +154,8 @@ processor = ProcessorFactory.create_with_strategy("sft", tokenizer, strategy)
 
 | Strategy  | Key        | Default Tokens                                                                                   |
 |-----------|------------|--------------------------------------------------------------------------------------------------|
-| ChatML    | `"chatml"` | `<\|im_start\|>user`, `<\|im_end\|>`, `<\|im_start\|>assistant`, `<｜end▁of▁sentence｜>`                       |
-| Alpaca    | `"alpaca"` | `### Instruction:`, `### Response:`, `<｜end▁of▁sentence｜>`                                                     |
+| ChatML    | `"chatml"` | `<｜im_start｜>user`, `<｜im_end｜>\n`, `<｜im_start｜>assistant`, `<｜im_end｜>\n`                |
+| Alpaca    | `"alpaca"` | `### Instruction:`, `### Response:`, `<｜end▁of▁sentence｜>`                                    |
 
 所有策略的 token 均可通过构造函数参数自定义，同时支持通过 `StrategyFactory.register()` 注册新格式。
 

@@ -1,4 +1,5 @@
 """Factory for creating and registering prompt strategies."""
+
 from typing import Dict, List, Type
 
 from pipeline.tokenizer import BpeTokenizer

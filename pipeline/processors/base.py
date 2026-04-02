@@ -1,4 +1,5 @@
 """Processor base class and shared utilities."""
+
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Tuple
 

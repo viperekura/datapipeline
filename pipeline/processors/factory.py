@@ -1,4 +1,5 @@
 """Factory for creating and registering processors."""
+
 from typing import Dict, List, Any, Optional, Type
 
 from pipeline.processors.base import BaseProcessor

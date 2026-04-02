@@ -30,7 +30,9 @@ def error_handler(
                 if reraise:
                     raise
                 return None
+
         return wrapper
+
     return decorator
 
 

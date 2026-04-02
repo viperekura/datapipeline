@@ -3,6 +3,7 @@
 Processor classes are registered at definition time via decorators and
 can be created through :class:`ProcessorFactory`.
 """
+
 from pipeline.processors.base import BaseProcessor
 from pipeline.processors.factory import ProcessorFactory
 from pipeline.processors.pretrain import PreTrainProcessor

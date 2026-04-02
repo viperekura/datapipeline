@@ -1,4 +1,5 @@
 """File, HDF5, JSONL I/O operations."""
+
 import json
 import os
 import logging
@@ -33,7 +34,9 @@ class IOHandler:
         return sorted(files)
 
     @staticmethod
-    def fetch_folders(root_dir: str, filter_func: Optional[Callable[[str], bool]] = None) -> List[str]:
+    def fetch_folders(
+        root_dir: str, filter_func: Optional[Callable[[str], bool]] = None
+    ) -> List[str]:
         folders = []
         for root, dirs, _ in os.walk(root_dir):
             for dir_name in dirs:
@@ -44,15 +47,17 @@ class IOHandler:
 
     @staticmethod
     @error_handler()
-    def save_h5(output_dir: str, file_name: str, tensor_group: Dict[str, List[Tensor]]) -> None:
+    def save_h5(
+        output_dir: str, file_name: str, tensor_group: Dict[str, List[Tensor]]
+    ) -> None:
         os.makedirs(output_dir, exist_ok=True)
         full_path = os.path.join(output_dir, f"{file_name}.h5")
 
-        with h5py.File(full_path, 'w') as f:
+        with h5py.File(full_path, "w") as f:
             for key, tensors in tensor_group.items():
                 grp = f.create_group(key)
                 for idx, tensor in enumerate(tensors):
-                    grp.create_dataset(f'data_{idx}', data=tensor.cpu().numpy())
+                    grp.create_dataset(f"data_{idx}", data=tensor.cpu().numpy())
 
     @staticmethod
     @error_handler()
@@ -63,7 +68,7 @@ class IOHandler:
         h5_files = list(root_path.rglob("*.h5")) + list(root_path.rglob("*.hdf5"))
 
         for h5_file in h5_files:
-            with h5py.File(h5_file, 'r') as f:
+            with h5py.File(h5_file, "r") as f:
                 for key in f.keys():
                     grp = f[key]
                     dsets = []
@@ -92,7 +97,9 @@ def export_dataset(
     *,
     chunk_size: int = 1_000_000,
     max_chunks: Optional[int] = None,
-    process_func: Optional[Callable[[Dict[str, Any]], Union[Dict[str, Any], List[Dict[str, Any]]]]] = None,
+    process_func: Optional[
+        Callable[[Dict[str, Any]], Union[Dict[str, Any], List[Dict[str, Any]]]]
+    ] = None,
     column: str = "text",
 ) -> List[str]:
     """
@@ -125,7 +132,11 @@ def export_dataset(
         try:
             with open(path, "w", encoding="utf-8") as f:
                 for example in chunk:
-                    processed = process_func(example) if process_func else {column: example[column]}
+                    processed = (
+                        process_func(example)
+                        if process_func
+                        else {column: example[column]}
+                    )
                     items = processed if isinstance(processed, list) else [processed]
                     for item in items:
                         f.write(json.dumps(item, ensure_ascii=False) + "\n")
@@ -172,17 +183,23 @@ def cache_jsonl(
         arrows: Dict[str, List] = {key: [] for key in output_keys}
 
         with open(file_path, "r", encoding="utf-8") as f:
-            for line_num, line in enumerate(tqdm(f, desc=f"Processing {file_name}", leave=False), start=1):
+            for line_num, line in enumerate(
+                tqdm(f, desc=f"Processing {file_name}", leave=False), start=1
+            ):
                 try:
                     result = processor.process(json.loads(line))
                     if result is not None:
                         for key in output_keys:
                             arrows[key].append(result[key])
                 except json.JSONDecodeError as e:
-                    logger.warning(f"JSON decode error in {file_path} line {line_num}: {e}. Skipping line.")
+                    logger.warning(
+                        f"JSON decode error in {file_path} line {line_num}: {e}. Skipping line."
+                    )
                     continue
                 except Exception as e:
-                    logger.warning(f"Unexpected error processing line {line_num} in {file_path}: {e}. Skipping line.")
+                    logger.warning(
+                        f"Unexpected error processing line {line_num} in {file_path}: {e}. Skipping line."
+                    )
                     continue
 
         if pack_size > 0:

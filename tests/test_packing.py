@@ -6,7 +6,6 @@ from pipeline.packing import SequencePacker
 
 
 class TestSequencePacker:
-
     def test_normal_packing(self):
         packer = SequencePacker(pack_size=10, pad_value=0)
         sequences = [
@@ -37,17 +36,21 @@ class TestSequencePacker:
     def test_long_sequence_split_across_chunks(self):
         """Sequences longer than pack_size are split across multiple chunks."""
         packer = SequencePacker(pack_size=5, pad_value=0)
-        packages = packer.pack([torch.tensor([1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.int32)])
+        packages = packer.pack(
+            [torch.tensor([1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.int32)]
+        )
         assert len(packages) == 2
         assert packages[0].tolist() == [1, 2, 3, 4, 5]
         assert packages[1].tolist() == [6, 7, 8, 0, 0]
 
     def test_padding_value(self):
         packer = SequencePacker(pack_size=8, pad_value=99)
-        packages = packer.pack([
-            torch.tensor([1, 2], dtype=torch.int32),
-            torch.tensor([3], dtype=torch.int32),
-        ])
+        packages = packer.pack(
+            [
+                torch.tensor([1, 2], dtype=torch.int32),
+                torch.tensor([3], dtype=torch.int32),
+            ]
+        )
         assert packages[0][:3].tolist() == [1, 2, 3]
         assert packages[0][3:].tolist() == [99] * 5
 
@@ -85,10 +88,12 @@ class TestSequencePacker:
 
     def test_exact_pack_size_fit(self):
         packer = SequencePacker(pack_size=5, pad_value=0)
-        packages = packer.pack([
-            torch.tensor([1, 2, 3, 4, 5], dtype=torch.int32),
-            torch.tensor([6, 7, 8, 9, 10], dtype=torch.int32),
-        ])
+        packages = packer.pack(
+            [
+                torch.tensor([1, 2, 3, 4, 5], dtype=torch.int32),
+                torch.tensor([6, 7, 8, 9, 10], dtype=torch.int32),
+            ]
+        )
         assert len(packages) == 2
         assert packages[0].tolist() == [1, 2, 3, 4, 5]
         assert packages[1].tolist() == [6, 7, 8, 9, 10]
@@ -127,10 +132,12 @@ class TestSequencePacker:
     def test_stream_split_across_chunks(self):
         """Sequences are split across chunks in streaming mode."""
         packer = SequencePacker(pack_size=5, pad_value=0)
-        packages = packer.pack([
-            torch.tensor([1, 2, 3], dtype=torch.int32),
-            torch.tensor([4, 5, 6, 7, 8], dtype=torch.int32),
-        ])
+        packages = packer.pack(
+            [
+                torch.tensor([1, 2, 3], dtype=torch.int32),
+                torch.tensor([4, 5, 6, 7, 8], dtype=torch.int32),
+            ]
+        )
         assert len(packages) == 2
         # First chunk: [1, 2, 3, 4, 5] — first seq + part of second
         assert packages[0].tolist() == [1, 2, 3, 4, 5]
@@ -151,9 +158,11 @@ class TestSequencePacker:
         """Streaming concat preserves input order, no sorting."""
         packer = SequencePacker(pack_size=4, pad_value=-1)
         # short then long (fits in 2 chunks)
-        packages = packer.pack([
-            torch.tensor([1], dtype=torch.int32),
-            torch.tensor([2, 3, 4, 5, 6, 7], dtype=torch.int32),
-        ])
+        packages = packer.pack(
+            [
+                torch.tensor([1], dtype=torch.int32),
+                torch.tensor([2, 3, 4, 5, 6, 7], dtype=torch.int32),
+            ]
+        )
         assert packages[0].tolist() == [1, 2, 3, 4]
         assert packages[1].tolist() == [5, 6, 7, -1]

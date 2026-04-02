@@ -1,4 +1,5 @@
 """ChatML format strategy."""
+
 from typing import List
 
 from pipeline.tokenizer import BpeTokenizer
@@ -8,15 +9,15 @@ from pipeline.strategies.factory import StrategyFactory
 
 @StrategyFactory.register("chatml")
 class ChatMLStrategy(PromptStrategy):
-    """ChatML format: ``<|im_start|>user ... <|im_end|> <|im_start|>assistant ... <|im_end|> <eos>``"""
+    """ChatML format strategy."""
 
     def __init__(
         self,
         tokenizer: BpeTokenizer,
-        user_start: str = "<|im_start|>user\n",
-        user_end: str = "<|im_end|>\n",
-        assistant_start: str = "<|im_start|>assistant\n",
-        assistant_end: str = "<|im_end|>\n<eos>",
+        user_start: str = "<｜im▁start｜>user\n",
+        user_end: str = "<｜im▁end｜>\n",
+        assistant_start: str = "<｜im▁start｜>assistant\n",
+        assistant_end: str = "<｜im▁end｜>\n",
     ):
         super().__init__(tokenizer)
 

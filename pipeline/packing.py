@@ -37,7 +37,9 @@ class SequencePacker:
         identical chunk boundaries. Element-level correspondence is preserved.
     """
 
-    def __init__(self, pack_size: int, pad_value: int = 0, dtype: torch.dtype = torch.int32):
+    def __init__(
+        self, pack_size: int, pad_value: int = 0, dtype: torch.dtype = torch.int32
+    ):
         self.pack_size = pack_size
         self.pad_value = pad_value
         self.dtype = dtype

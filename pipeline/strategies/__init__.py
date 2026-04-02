@@ -1,4 +1,5 @@
 """Strategy pattern for prompt/response format abstraction."""
+
 from pipeline.strategies.base import PromptStrategy
 from pipeline.strategies.factory import StrategyFactory
 

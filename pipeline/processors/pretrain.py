@@ -1,4 +1,5 @@
 """Pre-training data processor."""
+
 from typing import Dict, List, Any
 
 import torch
@@ -18,7 +19,7 @@ class PreTrainProcessor(BaseProcessor):
 
     def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:
         segment = input_dict["text"]
-        tokens = self.tokenizer.encode(f"{segment}<eos>")
+        tokens = self.tokenizer.encode(f"{segment}<｜end▁of▁sentence｜>")
         return {"sequence": torch.tensor(tokens, dtype=torch.int32)}
 
     @property

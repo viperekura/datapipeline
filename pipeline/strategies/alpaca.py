@@ -1,4 +1,5 @@
 """Alpaca format strategy."""
+
 from typing import List
 
 from pipeline.tokenizer import BpeTokenizer
@@ -8,14 +9,14 @@ from pipeline.strategies.factory import StrategyFactory
 
 @StrategyFactory.register("alpaca")
 class AlpacaStrategy(PromptStrategy):
-    """Alpaca format: ``### Instruction: ... \\n\\n### Response: ... <eos>``"""
+    """Alpaca format:"""
 
     def __init__(
         self,
         tokenizer: BpeTokenizer,
         instruction_start: str = "### Instruction:\n",
         response_start: str = "### Response:\n",
-        response_suffix: str = "\n<eos>",
+        response_suffix: str = "\n<｜end▁of▁sentence｜>",
     ):
         super().__init__(tokenizer)
         self.instruction_start = instruction_start

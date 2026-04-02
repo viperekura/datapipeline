@@ -7,14 +7,28 @@ normalizer = TextNormalizer()
 def process_func(input_dict: dict):
     query = input_dict["prompt"] if input_dict["prompt"] else ""
     resp = input_dict["response"] if input_dict["response"] else ""
-    return {"query": normalizer.normalize(query), "response": normalizer.normalize(resp)}
+    return {
+        "query": normalizer.normalize(query),
+        "response": normalizer.normalize(resp),
+    }
 
 
 if __name__ == "__main__":
     all_data = [
-        'stem_zh', 'infinity-instruct', 'firefly', 'magpie', 'dpsk-r1-distil',
-        'coig-cqia', 'disc-law', 'neo_sft_phase2', 'chinese-medical', 'chinese-reasoning-distil',
-        'psycho-10k-dpsk-r1', 'sof-c-zh', 'industryinstruction', 'Chinese-QA-AFAF',
+        "stem_zh",
+        "infinity-instruct",
+        "firefly",
+        "magpie",
+        "dpsk-r1-distil",
+        "coig-cqia",
+        "disc-law",
+        "neo_sft_phase2",
+        "chinese-medical",
+        "chinese-reasoning-distil",
+        "psycho-10k-dpsk-r1",
+        "sof-c-zh",
+        "industryinstruction",
+        "Chinese-QA-AFAF",
     ]
 
     dataset_list = []

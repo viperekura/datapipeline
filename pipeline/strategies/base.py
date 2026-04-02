@@ -1,4 +1,5 @@
 """Abstract base class for prompt construction strategies."""
+
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -30,7 +31,7 @@ class PromptStrategy(ABC):
         """Assemble query tokens into a complete prompt with format tokens.
 
         The prompt includes all tokens up to (and including) the response
-        start marker, e.g. ``<|im_start|>assistant\n``.
+        start marker, e.g. ``<｜im▁start｜>assistant\n``.
         """
 
     @abstractmethod

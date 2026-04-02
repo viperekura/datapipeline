@@ -70,7 +70,7 @@
 **PreTrainProcessor** (`"pt"`)
 ```
 Input:  {"text": "Hello world"}
-Action: tokenizer.encode(text + "<eos>")
+Action: tokenizer.encode(text + "<｜end▁of▁sentence｜>")
 Output: {"sequence": Tensor[int32]}
 ```
 
@@ -106,7 +106,7 @@ Output: {"chosen": Tensor, "chosen_mask": Tensor[bool],
 **接口**:
 - `build_prompt(input_dict)` — 构建包含 query 的完整 prompt
 - `build_response_prefix()` — response 前缀（当前均返回空串）
-- `build_response_suffix()` — response 后缀（含 `<eos>`）
+- `build_response_suffix()` — response 后缀（含 `<｜end▁of▁sentence｜>`）
 - `response_start_token` — response 起始 token（用于 DPO 的 loss mask 定位）
 - `eos_tokens` — 结束 token
 
@@ -119,7 +119,7 @@ ChatML:
 | user_start      | `<\|im_start\|>user\n`                    |
 | user_end        | `<\|im_end\|>\n`                          |
 | assistant_start | `<\|im_start\|>assistant\n`               |
-| assistant_end   | `<\|im_end\|>\n<eos>`                     |
+| assistant_end   | `<\|im_end\|>\n<｜end▁of▁sentence｜>`                     |
 
 Alpaca:
 
@@ -127,7 +127,7 @@ Alpaca:
 |------------------|------------------------|
 | instruction_start | `### Instruction:\n`  |
 | response_start    | `### Response:\n`     |
-| response_suffix   | `\n<eos>`             |
+| response_suffix   | `\n<｜end▁of▁sentence｜>`             |
 
 **自定义示例**:
 ```python
@@ -135,7 +135,7 @@ strategy = StrategyFactory.create("chatml",
     user_start="<s>user\n",
     user_end="</s>\n",
     assistant_start="<s>assistant\n",
-    assistant_end="</s>\n<eos>",
+    assistant_end="</s>\n<｜end▁of▁sentence｜>",
 )
 ```
 
@@ -178,7 +178,7 @@ StrategyFactory.register("my_format", MyStrategy)
 
 ### BpeTokenizer (`pipeline/tokenizer.py`)
 
-基于 HuggingFace `tokenizers` 库的 BPE 分词器，支持从文件加载、训练、保存。内置 `<bos>`/`<eos>`/`<pad>` 控制符和 `<|im_start|>`/`<|im_end|>` 特殊 token。
+基于 HuggingFace `tokenizers` 库的 BPE 分词器，支持从文件加载、训练、保存。内置 `<｜begin▁of▁sentence｜>`/`<｜end▁of▁sentence｜>`/`<｜▁pad▁｜>` 控制符和 `<｜im▁start｜>`/`<｜im▁end｜>` 特殊 token。
 
 ## API 参考
 

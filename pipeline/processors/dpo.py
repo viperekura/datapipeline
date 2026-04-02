@@ -1,4 +1,5 @@
 """DPO preference learning data processor."""
+
 from typing import Dict, List, Any, Optional
 
 import torch

@@ -28,7 +28,7 @@ class DummyStrategy(PromptStrategy):
         return prefix + query_tokens
 
     def assemble_response(self, response_tokens):
-        suffix = self._encode_format("<eos>")
+        suffix = self._encode_format("<｜end▁of▁sentence｜>")
         return response_tokens + suffix
 
 
@@ -46,9 +46,9 @@ class TestChatMLStrategy:
         query_tokens = tk.encode("hello")
         prompt = strategy.assemble_prompt(query_tokens)
         text = _decode(prompt)
-        assert "<|im_start|>user" in text
+        assert "<｜im▁start｜>user" in text
         assert "hello" in text
-        assert "<|im_start|>assistant" in text
+        assert "<｜im▁start｜>assistant" in text
 
     def test_assemble_response(self):
         tk = DummyTokenizer()
@@ -57,15 +57,18 @@ class TestChatMLStrategy:
         response = strategy.assemble_response(response_tokens)
         text = _decode(response)
         assert "world" in text
-        assert "<|im_end|>" in text
-        assert "<eos>" in text
+        assert "<｜im▁end｜>" in text
+        assert "<｜end▁of▁sentence｜>" in text
 
     def test_prompt_ends_with_assistant_start(self):
         tk = DummyTokenizer()
         strategy = ChatMLStrategy(tk)
         prompt = strategy.assemble_prompt(tk.encode("hi"))
         # prompt 末尾应该是 assistant_start 的 token ids
-        assert prompt[-len(strategy._assistant_start_ids):] == strategy._assistant_start_ids
+        assert (
+            prompt[-len(strategy._assistant_start_ids) :]
+            == strategy._assistant_start_ids
+        )
 
 
 class TestAlpacaStrategy:
@@ -89,7 +92,7 @@ class TestAlpacaStrategy:
         response = strategy.assemble_response(response_tokens)
         text = _decode(response)
         assert "world" in text
-        assert "<eos>" in text
+        assert "<｜end▁of▁sentence｜>" in text
 
 
 class TestStrategyFactory:

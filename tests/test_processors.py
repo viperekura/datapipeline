@@ -44,18 +44,24 @@ class TestSFTProcessor:
         assert SFTProcessor(DummyTokenizer()).output_keys == ["sequence", "loss_mask"]
 
     def test_process_returns_both_keys(self):
-        result = SFTProcessor(DummyTokenizer()).process({"query": "hello", "response": "world"})
+        result = SFTProcessor(DummyTokenizer()).process(
+            {"query": "hello", "response": "world"}
+        )
         assert "sequence" in result
         assert "loss_mask" in result
         assert isinstance(result["sequence"], torch.Tensor)
         assert isinstance(result["loss_mask"], torch.Tensor)
 
     def test_loss_mask_correct_length(self):
-        result = SFTProcessor(DummyTokenizer()).process({"query": "hi", "response": "bye"})
+        result = SFTProcessor(DummyTokenizer()).process(
+            {"query": "hi", "response": "bye"}
+        )
         assert len(result["sequence"]) == len(result["loss_mask"])
 
     def test_loss_mask_is_bool(self):
-        result = SFTProcessor(DummyTokenizer()).process({"query": "ab", "response": "cd"})
+        result = SFTProcessor(DummyTokenizer()).process(
+            {"query": "ab", "response": "cd"}
+        )
         assert result["loss_mask"].dtype == torch.bool
 
 
@@ -89,13 +95,19 @@ class TestDPOProcessor:
 
 class TestProcessorFactory:
     def test_create_pre_train_processor(self):
-        assert isinstance(ProcessorFactory.create("pt", DummyTokenizer()), PreTrainProcessor)
+        assert isinstance(
+            ProcessorFactory.create("pt", DummyTokenizer()), PreTrainProcessor
+        )
 
     def test_create_sft_processor(self):
-        assert isinstance(ProcessorFactory.create("sft", DummyTokenizer()), SFTProcessor)
+        assert isinstance(
+            ProcessorFactory.create("sft", DummyTokenizer()), SFTProcessor
+        )
 
     def test_create_dpo_processor(self):
-        assert isinstance(ProcessorFactory.create("dpo", DummyTokenizer()), DPOProcessor)
+        assert isinstance(
+            ProcessorFactory.create("dpo", DummyTokenizer()), DPOProcessor
+        )
 
     def test_create_invalid_processor_raises_error(self):
         with pytest.raises(ValueError, match="Unknown processor type"):
@@ -114,4 +126,6 @@ class TestProcessorFactory:
                 return {"custom": torch.tensor([1, 2, 3])}
 
         ProcessorFactory.register("custom")(CustomProcessor)
-        assert isinstance(ProcessorFactory.create("custom", DummyTokenizer()), CustomProcessor)
+        assert isinstance(
+            ProcessorFactory.create("custom", DummyTokenizer()), CustomProcessor
+        )

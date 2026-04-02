@@ -59,7 +59,7 @@ Stage 1: Export Dataset                     Stage 2: Tokenize & Cache
 **PT (Pre-training)**
 ```
 Input:  {"text": "Hello world"}
-Action: tokenizer.encode(text + "<eos>")
+Action: tokenizer.encode(text + "<｜end▁of▁sentence｜>")
 Output: {"sequence": Tensor[int32]}
 ```
 
@@ -67,7 +67,7 @@ Output: {"sequence": Tensor[int32]}
 ```
 Input:  {"query": "...", "response": "..."}
 Action:
-  1. strategy.build_prompt(input_dict)  ->  "<|im_start|>user\n...\n<|im_start|>assistant\n"
+  1. strategy.build_prompt(input_dict)  ->  "<｜im▁start｜>user\n...\n<｜im▁start｜>assistant\n"
   2. concat response + response_suffix
   3. tokenizer.encode full string
   4. build loss_mask: query part=False, response part=True
@@ -145,7 +145,7 @@ strategy = StrategyFactory.create("chatml",
     user_start="<s>user\n",
     user_end="</s>\n",
     assistant_start="<s>assistant\n",
-    assistant_end="</s>\n<eos>",
+    assistant_end="</s>\n<｜end▁of▁sentence｜>",
 )
 processor = ProcessorFactory.create_with_strategy("sft", tokenizer, strategy)
 ```
@@ -154,8 +154,8 @@ processor = ProcessorFactory.create_with_strategy("sft", tokenizer, strategy)
 
 | Strategy  | Key        | Default Tokens                                                                                   |
 |-----------|------------|--------------------------------------------------------------------------------------------------|
-| ChatML    | `"chatml"` | `<\|im_start\|>user`, `<\|im_end\|>`, `<\|im_start\|>assistant`, `<eos>`                       |
-| Alpaca    | `"alpaca"` | `### Instruction:`, `### Response:`, `<eos>`                                                     |
+| ChatML    | `"chatml"` | `<\|im_start\|>user`, `<\|im_end\|>`, `<\|im_start\|>assistant`, `<｜end▁of▁sentence｜>`                       |
+| Alpaca    | `"alpaca"` | `### Instruction:`, `### Response:`, `<｜end▁of▁sentence｜>`                                                     |
 
 所有策略的 token 均可通过构造函数参数自定义，同时支持通过 `StrategyFactory.register()` 注册新格式。
 

@@ -30,7 +30,6 @@ class DummyProcessor(BaseProcessor):
 
 
 class TestCacheJsonl:
-
     def test_basic_cache_functionality(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             jsonl_path = os.path.join(tmpdir, "test.jsonl")
@@ -41,8 +40,11 @@ class TestCacheJsonl:
 
             processor = DummyProcessor()
             output_files = cache_jsonl(
-                files=[jsonl_path], output_dir=tmpdir,
-                processor=processor, pack_size=-1, pad_value=0,
+                files=[jsonl_path],
+                output_dir=tmpdir,
+                processor=processor,
+                pack_size=-1,
+                pad_value=0,
             )
             assert len(output_files) == 1
             assert os.path.exists(output_files[0])
@@ -57,8 +59,11 @@ class TestCacheJsonl:
 
             processor = DummyProcessor()
             output_files = cache_jsonl(
-                files=[jsonl_path], output_dir=tmpdir,
-                processor=processor, pack_size=10, pad_value=0,
+                files=[jsonl_path],
+                output_dir=tmpdir,
+                processor=processor,
+                pack_size=10,
+                pad_value=0,
             )
             assert len(output_files) == 1
             assert os.path.exists(output_files[0])
@@ -73,8 +78,11 @@ class TestCacheJsonl:
 
             processor = DummyProcessor()
             output_files = cache_jsonl(
-                files=[jsonl_path], output_dir=tmpdir,
-                processor=processor, pack_size=0, pad_value=-1,
+                files=[jsonl_path],
+                output_dir=tmpdir,
+                processor=processor,
+                pack_size=0,
+                pad_value=-1,
             )
             assert len(output_files) == 1
             assert os.path.exists(output_files[0])
@@ -91,8 +99,11 @@ class TestCacheJsonl:
 
             processor = DummyProcessor()
             output_files = cache_jsonl(
-                files=files, output_dir=tmpdir,
-                processor=processor, pack_size=-1, pad_value=0,
+                files=files,
+                output_dir=tmpdir,
+                processor=processor,
+                pack_size=-1,
+                pad_value=0,
             )
             assert len(output_files) == 2
 
@@ -103,7 +114,10 @@ class TestCacheJsonl:
 
             processor = DummyProcessor()
             output_files = cache_jsonl(
-                files=[jsonl_path], output_dir=tmpdir,
-                processor=processor, pack_size=-1, pad_value=0,
+                files=[jsonl_path],
+                output_dir=tmpdir,
+                processor=processor,
+                pack_size=-1,
+                pad_value=0,
             )
             assert len(output_files) == 1

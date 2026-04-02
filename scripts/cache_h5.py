@@ -7,6 +7,7 @@ Usage:
     python scripts/cache_h5.py sft ./dataset/belle-sft --pack-size 4096 --strategy alpaca
     python scripts/cache_h5.py sft ./dataset/Ling-Coder-sft --tokenizer ./my_tokenizer.json
 """
+
 import argparse
 import os
 
@@ -18,16 +19,34 @@ def main():
     parser = argparse.ArgumentParser(description="JSONL -> H5 cache")
     parser.add_argument("type", choices=["pt", "sft", "dpo"], help="Processor type")
     parser.add_argument("input_dir", help="Directory containing JSONL files")
-    parser.add_argument("-o", "--output-dir", default=None,
-                        help="H5 output dir (default: <input_dir>/cached)")
-    parser.add_argument("-t", "--tokenizer", default="./tokenizer.json",
-                        help="Tokenizer path (default: ./tokenizer.json)")
-    parser.add_argument("-s", "--strategy", default=None,
-                        help="Prompt strategy: chatml, alpaca (default: chatml)")
-    parser.add_argument("-p", "--pack-size", type=int, default=-1,
-                        help="Pack size, <=0 to disable (default: -1)")
-    parser.add_argument("--pad-value", type=int, default=1,
-                        help="Padding value (default: 1)")
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        default=None,
+        help="H5 output dir (default: <input_dir>/cached)",
+    )
+    parser.add_argument(
+        "-t",
+        "--tokenizer",
+        default="./tokenizer.json",
+        help="Tokenizer path (default: ./tokenizer.json)",
+    )
+    parser.add_argument(
+        "-s",
+        "--strategy",
+        default=None,
+        help="Prompt strategy: chatml, alpaca (default: chatml)",
+    )
+    parser.add_argument(
+        "-p",
+        "--pack-size",
+        type=int,
+        default=-1,
+        help="Pack size, <=0 to disable (default: -1)",
+    )
+    parser.add_argument(
+        "--pad-value", type=int, default=1, help="Padding value (default: 1)"
+    )
     args = parser.parse_args()
 
     jsonl_files = IOHandler.fetch_files(args.input_dir, suffix=".jsonl")

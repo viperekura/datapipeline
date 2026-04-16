@@ -176,9 +176,11 @@ StrategyFactory.register("my_format", MyStrategy)
 - `load_h5(file_path, share_memory)` — 加载 HDF5，支持共享内存（用于 DataLoader 多进程）
 - `fetch_files(directory)` / `fetch_folders(root_dir)` — 文件/目录遍历
 
-### BpeTokenizer (`pipeline/tokenizer.py`)
+### AutoTokenizer (`pipeline/tokenize/tokenizer.py`)
 
 基于 HuggingFace `tokenizers` 库的 BPE 分词器，支持从文件加载、训练、保存。内置 `<｜begin▁of▁sentence｜>`/`<｜end▁of▁sentence｜>`/`<｜▁pad▁｜>` 控制符和 `<｜im▁start｜>`/`<｜im▁end｜>` 特殊 token。
+
+支持动态属性访问（`bos_token`, `bos_token_id`, `stop_ids`, `pad_id` 等）和聊天模板（`set_chat_template`, `apply_chat_template`）。
 
 ## API 参考
 

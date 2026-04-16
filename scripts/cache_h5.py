@@ -11,7 +11,7 @@ Usage:
 import argparse
 import os
 
-from pipeline import BpeTokenizer, ProcessorFactory, cache_jsonl
+from pipeline import AutoTokenizer, ProcessorFactory, cache_jsonl
 from pipeline.io import IOHandler
 
 
@@ -61,7 +61,7 @@ def main():
     if not os.path.exists(args.tokenizer):
         print(f"[ERROR] Tokenizer not found: {args.tokenizer}")
         return
-    tokenizer = BpeTokenizer(args.tokenizer)
+    tokenizer = AutoTokenizer(args.tokenizer)
     print(f"Tokenizer loaded: vocab_size={len(tokenizer)}")
 
     if args.strategy:

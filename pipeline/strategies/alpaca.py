@@ -2,7 +2,7 @@
 
 from typing import List
 
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer
 from pipeline.strategies.base import PromptStrategy
 from pipeline.strategies.factory import StrategyFactory
 
@@ -13,7 +13,7 @@ class AlpacaStrategy(PromptStrategy):
 
     def __init__(
         self,
-        tokenizer: BpeTokenizer,
+        tokenizer: AutoTokenizer,
         instruction_start: str = "### Instruction:\n",
         response_start: str = "### Response:\n",
         response_suffix: str = "\n<｜end▁of▁sentence｜>",

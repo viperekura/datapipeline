@@ -3,7 +3,7 @@
 from typing import Dict, List, Any, Optional, Type
 
 from pipeline.processors.base import BaseProcessor
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer
 from pipeline.strategies import PromptStrategy, StrategyFactory
 
 
@@ -45,7 +45,7 @@ class ProcessorFactory:
         return decorator
 
     @classmethod
-    def create(cls, processor_type: str, tokenizer: BpeTokenizer) -> BaseProcessor:
+    def create(cls, processor_type: str, tokenizer: AutoTokenizer) -> BaseProcessor:
         """Create a processor by type name (uses default ChatMLStrategy for SFT/DPO).
 
         Args:
@@ -69,7 +69,7 @@ class ProcessorFactory:
     def create_with_strategy(
         cls,
         processor_type: str,
-        tokenizer: BpeTokenizer,
+        tokenizer: AutoTokenizer,
         strategy: PromptStrategy,
     ) -> BaseProcessor:
         """Create a processor with a custom strategy.
@@ -99,7 +99,7 @@ class ProcessorFactory:
     def create_with_strategy_name(
         cls,
         processor_type: str,
-        tokenizer: BpeTokenizer,
+        tokenizer: AutoTokenizer,
         strategy_name: str,
         **strategy_kwargs,
     ) -> BaseProcessor:

@@ -5,7 +5,7 @@ from typing import Dict, List, Any, Optional
 import torch
 from torch import Tensor
 
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer
 from pipeline.strategies import PromptStrategy, ChatMLStrategy
 from pipeline.processors.base import BaseProcessor, _encode_with_mask
 from pipeline.processors.factory import ProcessorFactory
@@ -20,7 +20,7 @@ class DPOProcessor(BaseProcessor):
 
     def __init__(
         self,
-        tokenizer: BpeTokenizer,
+        tokenizer: AutoTokenizer,
         strategy: Optional[PromptStrategy] = None,
     ):
         self.tokenizer = tokenizer

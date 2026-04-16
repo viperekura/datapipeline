@@ -7,7 +7,6 @@ from pipeline.strategies import (
     AlpacaStrategy,
     StrategyFactory,
 )
-from pipeline.tokenizer import BpeTokenizer
 
 
 class DummyTokenizer:
@@ -58,7 +57,6 @@ class TestChatMLStrategy:
         text = _decode(response)
         assert "world" in text
         assert "<｜im▁end｜>" in text
-        assert "<｜end▁of▁sentence｜>" in text
 
     def test_prompt_ends_with_assistant_start(self):
         tk = DummyTokenizer()

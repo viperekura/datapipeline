@@ -115,9 +115,9 @@ export_dataset(
 ### 2. 分词并缓存为 HDF5
 
 ```python
-from pipeline import BpeTokenizer, ProcessorFactory, cache_jsonl
+from pipeline import AutoTokenizer, ProcessorFactory, cache_jsonl
 
-tokenizer = BpeTokenizer("tokenizer.json")
+tokenizer = AutoTokenizer("tokenizer.json")
 processor = ProcessorFactory.create("pt", tokenizer)
 
 cache_jsonl(

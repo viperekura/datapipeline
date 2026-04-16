@@ -5,7 +5,7 @@ from typing import Dict, List, Any
 import torch
 from torch import Tensor
 
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer
 from pipeline.processors.base import BaseProcessor
 from pipeline.processors.factory import ProcessorFactory
 
@@ -14,7 +14,7 @@ from pipeline.processors.factory import ProcessorFactory
 class PreTrainProcessor(BaseProcessor):
     """Pre-training data processor."""
 
-    def __init__(self, tokenizer: BpeTokenizer):
+    def __init__(self, tokenizer: AutoTokenizer):
         self.tokenizer = tokenizer
 
     def process(self, input_dict: Dict[str, Any]) -> Dict[str, Tensor]:

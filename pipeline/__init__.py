@@ -1,5 +1,5 @@
 import logging
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer, ChatTemplate, train_bpe_tokenizer
 from pipeline.text import TextNormalizer
 from pipeline.packing import SequencePacker
 from pipeline.io import IOHandler, export_dataset, cache_jsonl
@@ -16,8 +16,11 @@ from pipeline.strategies import (
 setup_logging()
 
 __all__ = [
+    # Tokenizer
+    "AutoTokenizer",
+    "ChatTemplate",
+    "train_bpe_tokenizer",
     # Core modules
-    "BpeTokenizer",
     "TextNormalizer",
     "SequencePacker",
     "IOHandler",

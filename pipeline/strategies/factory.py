@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Type
 
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer
 from pipeline.strategies.base import PromptStrategy
 
 
@@ -44,7 +44,7 @@ class StrategyFactory:
         return decorator
 
     @classmethod
-    def create(cls, name: str, tokenizer: BpeTokenizer, **kwargs) -> PromptStrategy:
+    def create(cls, name: str, tokenizer: AutoTokenizer, **kwargs) -> PromptStrategy:
         """Create a strategy by name.
 
         Args:

@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from pipeline.tokenizer import BpeTokenizer
+from pipeline.tokenize import AutoTokenizer
 
 
 class PromptStrategy(ABC):
@@ -14,7 +14,7 @@ class PromptStrategy(ABC):
     which assembles them with pre-encoded format tokens.
     """
 
-    def __init__(self, tokenizer: BpeTokenizer):
+    def __init__(self, tokenizer: AutoTokenizer):
         self.tokenizer = tokenizer
 
     def _encode_format(self, text: str) -> List[int]:

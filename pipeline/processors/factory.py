@@ -1,10 +1,30 @@
-"""Factory for creating and registering processors."""
+"""Factory for creating and registering processors with unified interface."""
 
-from typing import Dict, List, Any, Optional, Type
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Type, Union
 
 from pipeline.processors.base import BaseProcessor
 from pipeline.tokenize import AutoTokenizer
 from pipeline.strategies import PromptStrategy, StrategyFactory
+
+
+@dataclass
+class ProcessorConfig:
+    """Configuration for creating a processor.
+
+    Attributes:
+        processor_type: Type name for the processor ("pt", "sft", "dpo").
+        tokenizer: Tokenizer instance (required).
+        strategy_name: Name of the strategy to use (optional).
+        strategy: Pre-created strategy instance (optional).
+        strategy_kwargs: Additional arguments for strategy creation.
+    """
+
+    processor_type: str
+    tokenizer: AutoTokenizer
+    strategy_name: Optional[str] = None
+    strategy: Optional[PromptStrategy] = None
+    strategy_kwargs: Optional[Dict] = None
 
 
 class ProcessorFactory:
@@ -18,7 +38,16 @@ class ProcessorFactory:
         class CustomProcessor(BaseProcessor):
             ...
 
-        processor = ProcessorFactory.create(optimizer, "custom", **kwargs)
+        # Using config object (recommended)
+        config = ProcessorConfig(
+            processor_type="sft",
+            tokenizer=tokenizer,
+            strategy_name="alpaca"
+        )
+        processor = ProcessorFactory.create_from_config(config)
+
+        # Using direct arguments
+        processor = ProcessorFactory.create("pt", tokenizer)
     """
 
     PROCESSOR_MAP: Dict[str, Type[BaseProcessor]] = {}
@@ -46,10 +75,10 @@ class ProcessorFactory:
 
     @classmethod
     def create(cls, processor_type: str, tokenizer: AutoTokenizer) -> BaseProcessor:
-        """Create a processor by type name (uses default ChatMLStrategy for SFT/DPO).
+        """Create a processor by type name.
 
         Args:
-            processor_type: Registered processor name (e.g. ``"pt"``, ``"sft"``, ``"dpo"``).
+            processor_type: Registered processor name (e.g. "pt", "sft", "dpo").
             tokenizer: Tokenizer instance.
 
         Returns:
@@ -72,14 +101,12 @@ class ProcessorFactory:
         tokenizer: AutoTokenizer,
         strategy: PromptStrategy,
     ) -> BaseProcessor:
-        """Create a processor with a custom strategy.
-
-        Only SFT and DPO processors accept a strategy; PreTrain ignores it.
+        """Create a processor with a pre-configured strategy.
 
         Args:
             processor_type: Registered processor name.
             tokenizer: Tokenizer instance.
-            strategy: Prompt strategy instance.
+            strategy: Pre-created strategy instance.
 
         Returns:
             Processor instance configured with strategy.
@@ -108,14 +135,52 @@ class ProcessorFactory:
         Args:
             processor_type: Registered processor name.
             tokenizer: Tokenizer instance.
-            strategy_name: Registered strategy name (``"chatml"``, ``"alpaca"``, etc.).
-            **strategy_kwargs: Forwarded to the strategy constructor.
+            strategy_name: Registered strategy name ("chatml", "alpaca", etc.).
+            **strategy_kwargs: Additional arguments forwarded to strategy constructor.
 
         Returns:
             Processor instance.
         """
         strategy = StrategyFactory.create(strategy_name, tokenizer, **strategy_kwargs)
         return cls.create_with_strategy(processor_type, tokenizer, strategy)
+
+    @classmethod
+    def create_from_config(cls, config: ProcessorConfig) -> BaseProcessor:
+        """Create a processor from a configuration object (unified interface).
+
+        Args:
+            config: ProcessorConfig with all creation parameters.
+
+        Returns:
+            Processor instance.
+
+        Raises:
+            ValueError: If processor_type is not registered or strategy is invalid.
+        """
+        if config.processor_type not in cls.PROCESSOR_MAP:
+            raise ValueError(
+                f"Unknown processor type: '{config.processor_type}'. "
+                f"Supported types: {sorted(cls.PROCESSOR_MAP.keys())}"
+            )
+
+        tokenizer = config.tokenizer
+        strategy_kwargs = config.strategy_kwargs or {}
+
+        # Determine strategy to use
+        strategy: Optional[PromptStrategy] = None
+        if config.strategy is not None:
+            strategy = config.strategy
+        elif config.strategy_name is not None:
+            strategy = StrategyFactory.create(
+                config.strategy_name, tokenizer, **strategy_kwargs
+            )
+
+        # Create processor
+        if strategy is not None:
+            return cls.create_with_strategy(
+                config.processor_type, tokenizer, strategy
+            )
+        return cls.create(config.processor_type, tokenizer)
 
     @classmethod
     def available_types(cls) -> List[str]:

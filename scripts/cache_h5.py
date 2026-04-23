@@ -11,8 +11,14 @@ Usage:
 import argparse
 import os
 
-from pipeline import AutoTokenizer, ProcessorFactory, cache_jsonl
-from pipeline.io import IOHandler
+from pipeline import (
+    AutoTokenizer,
+    ProcessorFactory,
+    ProcessorConfig,
+    FileScanner,
+    cache_jsonl,
+    setup_logging,
+)
 
 
 def main():
@@ -47,9 +53,19 @@ def main():
     parser.add_argument(
         "--pad-value", type=int, default=1, help="Padding value (default: 1)"
     )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level (default: INFO)",
+    )
     args = parser.parse_args()
 
-    jsonl_files = IOHandler.fetch_files(args.input_dir, suffix=".jsonl")
+    # Initialize logging explicitly (not automatic anymore)
+    import logging
+    setup_logging(getattr(logging, args.log_level))
+
+    jsonl_files = FileScanner.scan(args.input_dir, suffix=".jsonl")
     if not jsonl_files:
         print(f"[ERROR] No JSONL files found in {args.input_dir}")
         return
@@ -64,12 +80,13 @@ def main():
     tokenizer = AutoTokenizer(args.tokenizer)
     print(f"Tokenizer loaded: vocab_size={len(tokenizer)}")
 
-    if args.strategy:
-        processor = ProcessorFactory.create_with_strategy_name(
-            args.type, tokenizer, args.strategy
-        )
-    else:
-        processor = ProcessorFactory.create(args.type, tokenizer)
+    # Use unified config interface
+    config = ProcessorConfig(
+        processor_type=args.type,
+        tokenizer=tokenizer,
+        strategy_name=args.strategy,
+    )
+    processor = ProcessorFactory.create_from_config(config)
 
     print(f"Processor: {args.type} ({processor.__class__.__name__})")
     print(f"Output keys: {processor.output_keys}")

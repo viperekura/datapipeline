@@ -83,7 +83,7 @@ def cache_jsonl(
     processor: BaseProcessor,
     *,
     pack_size: int = -1,
-    pad_value: int = 1,
+    pad_value: int = 0,
 ) -> List[str]:
     """Tokenize JSONL files and pack them into HDF5 storage.
 

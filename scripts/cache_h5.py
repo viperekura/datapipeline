@@ -51,7 +51,7 @@ def main():
         help="Pack size, <=0 to disable (default: -1)",
     )
     parser.add_argument(
-        "--pad-value", type=int, default=1, help="Padding value (default: 1)"
+        "--pad-value", type=int, default=0, help="Padding value (default: 0)"
     )
     parser.add_argument(
         "--log-level",

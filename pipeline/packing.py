@@ -1,7 +1,9 @@
 import logging
-from typing import List
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import torch
 from torch import Tensor
+
 from pipeline.utils import error_handler
 
 logger = logging.getLogger(__name__)
@@ -38,12 +40,15 @@ class SequencePacker:
     """
 
     def __init__(
-        self, pack_size: int, pad_value: int = 0, dtype: torch.dtype = torch.int32
+        self,
+        pack_size: int,
+        pad_value: Union[int, bool] = 0,
+        dtype: Optional[torch.dtype] = None,
     ):
         self.pack_size = pack_size
         self.pad_value = pad_value
         self.dtype = dtype
-        self._buffer: List[int] = []
+        self._buffer: List = []
         self._pos: int = 0
         self._packages: List[Tensor] = []
 
@@ -61,6 +66,8 @@ class SequencePacker:
         Sequences are concatenated in order and sliced at pack_size boundaries.
         The final chunk is padded with pad_value.
 
+        When dtype is not set at init, it is inferred from the first input tensor.
+
         Args:
             sequences: List of 1D input tensors.
 
@@ -69,6 +76,10 @@ class SequencePacker:
         """
         if not sequences:
             return []
+
+        # --- auto-infer dtype from first sequence ---
+        if self.dtype is None:
+            self.dtype = sequences[0].dtype
 
         # --- validate & normalize ---
         normalized: List[Tensor] = []
@@ -100,3 +111,36 @@ class SequencePacker:
 
         self._pos = len(buf)
         return self._packages
+
+
+def pack_tensors(
+    tensors: Dict[str, List[Tensor]],
+    pack_size: int,
+    pad_value: Union[int, bool] = 0,
+    dtypes: Optional[Dict[str, torch.dtype]] = None,
+) -> Dict[str, List[Tensor]]:
+    """
+    Pack multiple named tensor groups in parallel.
+
+    Each group is packed independently with its own SequencePacker instance.
+    When dtypes is provided, packers use the declared dtype per key;
+    otherwise dtype is auto-inferred from the first tensor in each group.
+
+    Args:
+        tensors: Dict mapping key names to lists of 1D tensors.
+        pack_size: Fixed chunk length.
+        pad_value: Padding value for non-bool tensors.
+        dtypes: Optional per-key dtype declarations.
+
+    Returns:
+        Dict mapping key names to lists of packed tensors.
+    """
+    if dtypes is None:
+        dtypes = {}
+
+    output: Dict[str, List[Tensor]] = {}
+    for key, seqs in tensors.items():
+        dtype = dtypes.get(key)
+        packer = SequencePacker(pack_size, pad_value, dtype=dtype)
+        output[key] = packer.pack(seqs)
+    return output

@@ -12,7 +12,7 @@ from tqdm import tqdm
 from pipeline.io.file_scanner import FileScanner
 from pipeline.io.hdf5_handler import HDF5Handler
 from pipeline.processors import BaseProcessor
-from pipeline.packing import SequencePacker
+from pipeline.packing import pack_tensors
 from pipeline.utils import error_handler
 
 logger = logging.getLogger(__name__)
@@ -127,10 +127,12 @@ def cache_jsonl(
                     continue
 
         if pack_size > 0:
-            output = {}
-            for key in output_keys:
-                packer = SequencePacker(pack_size, pad_value)
-                output[key] = packer.pack(arrows[key])
+            dtypes = (
+                dict(processor.schema.output_fields)
+                if processor.schema is not None
+                else None
+            )
+            output = pack_tensors(arrows, pack_size, pad_value, dtypes)
         else:
             output = arrows
 

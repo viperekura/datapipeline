@@ -7,7 +7,7 @@ import torch
 import h5py
 from pathlib import Path
 
-from pipeline.io import FileScanner, HDF5Handler
+from pipeline.io import FileScanner, HDF5Handler, cache_jsonl
 
 
 class TestFileScanner:
@@ -137,3 +137,48 @@ class TestHDF5Handler:
             h5_path = os.path.join(tmpdir, "meta.h5")
             metadata = HDF5Handler.get_metadata(h5_path)
             assert metadata["data"] == 5
+
+
+class DummyTokenizer:
+    im_end = "<|im_end|>"
+
+    def encode(self, text: str, add_special_tokens: bool = False):
+        return [ord(c) for c in text]
+
+    def apply_chat_template(
+        self, messages, add_generation_prompt=True, tokenize=True
+    ):
+        text = ""
+        for m in messages:
+            text += f"<|im_start|>{m['role']}\n{m['content']}<|im_end|>\n"
+        if add_generation_prompt:
+            text += "<|im_start|>assistant\n"
+        return self.encode(text) if tokenize else text
+
+
+class TestPositionIds:
+    def test_example_specific_position_ids(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            jsonl_path = os.path.join(tmpdir, "data.jsonl")
+            with open(jsonl_path, "w") as f:
+                f.write('{"messages": [{"role": "user", "content": "a"}, {"role": "assistant", "content": "bc"}]}\n')
+                f.write('{"messages": [{"role": "user", "content": "def"}, {"role": "assistant", "content": "g"}]}\n')
+
+            from pipeline.processors import SFTProcessor
+
+            processor = SFTProcessor(DummyTokenizer())
+            out_dir = os.path.join(tmpdir, "cached")
+            cache_jsonl([jsonl_path], out_dir, processor, pack_size=-1)
+
+            h5_path = os.path.join(out_dir, "data.h5")
+            loaded = HDF5Handler.load(h5_path, share_memory=False)
+
+            assert "position_ids" in loaded
+            assert len(loaded["position_ids"]) == 2
+            assert len(loaded["position_ids"]) == len(loaded["sequence"])
+
+            for i, pos in enumerate(loaded["position_ids"]):
+                seq_len = len(loaded["sequence"][i])
+                assert len(pos) == seq_len
+                assert pos[0].item() == 0
+                assert (pos == torch.arange(seq_len, dtype=torch.int32)).all()

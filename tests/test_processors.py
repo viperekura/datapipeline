@@ -13,8 +13,20 @@ from pipeline.processors import (
 
 
 class DummyTokenizer:
+    im_end = "<|im_end|>"
+
     def encode(self, text: str, add_special_tokens: bool = False):
         return [ord(c) for c in text]
+
+    def apply_chat_template(
+        self, messages, add_generation_prompt=True, tokenize=True
+    ):
+        text = ""
+        for m in messages:
+            text += f"<|im_start|>{m['role']}\n{m['content']}<|im_end|>\n"
+        if add_generation_prompt:
+            text += "<|im_start|>assistant\n"
+        return self.encode(text) if tokenize else text
 
 
 class TestBaseProcessor:
@@ -41,16 +53,18 @@ class TestPreTrainProcessor:
 
 class TestSFTProcessor:
     def test_output_keys(self):
-        assert SFTProcessor(DummyTokenizer()).output_keys == ["sequence", "loss_mask"]
+        keys = SFTProcessor(DummyTokenizer()).output_keys
+        assert "sequence" in keys
+        assert "loss_mask" in keys
+        assert "position_ids" in keys
 
-    def test_process_returns_both_keys(self):
+    def test_process_returns_all_keys(self):
         result = SFTProcessor(DummyTokenizer()).process(
             {"query": "hello", "response": "world"}
         )
-        assert "sequence" in result
-        assert "loss_mask" in result
-        assert isinstance(result["sequence"], torch.Tensor)
-        assert isinstance(result["loss_mask"], torch.Tensor)
+        for key in ["sequence", "loss_mask", "position_ids"]:
+            assert key in result
+            assert isinstance(result[key], torch.Tensor)
 
     def test_loss_mask_correct_length(self):
         result = SFTProcessor(DummyTokenizer()).process(
@@ -63,6 +77,73 @@ class TestSFTProcessor:
             {"query": "ab", "response": "cd"}
         )
         assert result["loss_mask"].dtype == torch.bool
+
+    def test_position_ids_start_from_zero(self):
+        result = SFTProcessor(DummyTokenizer()).process(
+            {"query": "abc", "response": "de"}
+        )
+        seq_len = len(result["sequence"])
+        expected = torch.arange(seq_len, dtype=torch.int32)
+        assert torch.equal(result["position_ids"], expected)
+
+    def test_messages_single_turn(self):
+        result = SFTProcessor(DummyTokenizer()).process({
+            "messages": [
+                {"role": "user", "content": "hi"},
+                {"role": "assistant", "content": "bye"},
+            ]
+        })
+        for key in ["sequence", "loss_mask", "position_ids"]:
+            assert key in result
+        assert len(result["sequence"]) == len(result["loss_mask"])
+
+    def test_messages_loss_on_last_assistant_only(self):
+        result = SFTProcessor(DummyTokenizer()).process({
+            "messages": [
+                {"role": "user", "content": "q1"},
+                {"role": "assistant", "content": "a1"},
+                {"role": "user", "content": "q2"},
+                {"role": "assistant", "content": "a2"},
+            ]
+        })
+        mask = result["loss_mask"]
+        first_true = mask.tolist().index(True)
+        assert not mask[:first_true].any()
+        assert mask[-1].item() is True
+
+    def test_messages_with_system_prompt(self):
+        result = SFTProcessor(DummyTokenizer()).process({
+            "messages": [
+                {"role": "system", "content": "You are helpful."},
+                {"role": "user", "content": "hi"},
+                {"role": "assistant", "content": "hello"},
+            ]
+        })
+        assert "sequence" in result
+
+    def test_messages_empty_raises(self):
+        with pytest.raises(ValueError, match="Messages list is empty"):
+            SFTProcessor(DummyTokenizer()).process({"messages": []})
+
+    def test_messages_last_not_assistant_raises(self):
+        with pytest.raises(ValueError, match="Last message must"):
+            SFTProcessor(DummyTokenizer()).process({
+                "messages": [{"role": "user", "content": "hi"}]
+            })
+
+    def test_missing_fields_raises(self):
+        with pytest.raises(KeyError):
+            SFTProcessor(DummyTokenizer()).process({"foo": "bar"})
+
+    def test_position_ids_start_from_zero(self):
+        result = SFTProcessor(DummyTokenizer()).process(
+            {"query": "hi", "response": "ok"}
+        )
+        pos_ids = result["position_ids"]
+        assert pos_ids.dtype == torch.int32
+        assert len(pos_ids) == len(result["sequence"])
+        assert pos_ids[0].item() == 0
+        assert (pos_ids == torch.arange(len(pos_ids))).all()
 
 
 class TestDPOProcessor:
